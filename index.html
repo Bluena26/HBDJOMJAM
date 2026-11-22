@@ -79,6 +79,8 @@ body.lit #narr::before{background:radial-gradient(closest-side,rgba(255,248,238,
 #bubble{position:absolute;transform:translate(-50%,-100%);max-width:min(260px,70vw);padding:9px 14px;border-radius:16px;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:none;opacity:0;transition:opacity .3s}
 #bubble.on{opacity:1}
 #bubble:after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:var(--cream)}
+@keyframes fh{from{opacity:1;transform:translate(-50%,-50%) scale(.6)}to{opacity:0;transform:translate(-50%,-220%) scale(1.2)}}
+.fheart{position:absolute;pointer-events:none;font-size:24px;line-height:1;z-index:30;transform:translate(-50%,-50%);animation:fh 1.4s ease-out forwards}
 #bar{left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);display:flex;justify-content:center;pointer-events:none}
 .pill{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 18px;border-radius:99px;background:rgba(20,16,30,.84);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);color:#fff}
 .pill small{display:block;font-size:11px;opacity:.7}
@@ -507,7 +509,9 @@ function snapshotURL(i) { return slideCanvases[i].toDataURL('image/jpeg', .85); 
 const EXT = 3.4;                        // ขยายห้องออกไปทางด้าน +x / +z (ฝั่งที่ไม่มีผนัง)
 const TC = { x: -1, z: 1.2 };           // table centre
 const GIFT_POS = { x: 2.4, z: 3.3 };
-const CAMP = { x: -1.8, z: 5.6 };          // กล้องถ่ายรูป (กดถ่ายได้เลย)
+const CAMP = { x: -1.8, z: 5.6 };
+const CATP = { x: 2.0, z: 6.8 }, CATYAW = Math.PI / 4;   // แมวนั่งตรงพื้นด้านหน้า (ในกรอบแดงที่ขอ) หันออกมาทางกล้อง
+            // แมวเปอร์เซียสีขาว          // กล้องถ่ายรูป (กดถ่ายได้เลย)
 const PZ = { x: 5.2, z: .8 };            // โต๊ะจิ๊กซอว์
 const SOFA = { x: 2.6, z: -1.6 };
 const R = { flames: [], balloons: [], fw: [] };
@@ -645,6 +649,41 @@ function buildRoom() {
   ball(cam, .028, mat(0xe63946, { roughness: .4 }), .17, 1.43, .135);
   const cring = new THREE.Mesh(new THREE.RingGeometry(.5, .58, 40), new THREE.MeshBasicMaterial({ color: 0xffc766, transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false }));
   cring.rotation.x = -Math.PI / 2; cring.position.y = .02; cam.add(cring); R.camRing = cring;
+
+  // white Persian cat
+  const cat = new THREE.Group(); cat.position.set(CATP.x, 0, CATP.z); cat.rotation.y = CATYAW; root.add(cat);
+  const fur = mat(0xfffaf4, { roughness: 1 }), cpink = mat(0xf2a7b4, { roughness: .8 }), cdk = mat(0x2a1c1c, { roughness: .5 }), cglint = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const cLegs = [], cEars = [];
+  const cbody = ball(cat, .25, fur, 0, .26, -.02); cbody.scale.set(1, 1.1, .95);
+  ball(cat, .18, fur, 0, .2, .14).scale.set(1.1, 1, .9);
+  [-1, 1].forEach(function (sx) {
+    ball(cat, .17, fur, sx * .17, .15, -.04).scale.set(.9, .9, 1.15);
+    const leg = new THREE.Group(); leg.position.set(sx * .09, .22, .2); cat.add(leg);          // pivot ที่ไหล่ แกว่งขาได้
+    cyl(leg, .05, .045, .2, fur, 0, -.1, 0, 12); ball(leg, .06, fur, 0, -.185, .04).scale.set(1, .6, 1.25);
+    cLegs.push(leg);
+  });
+  const ctail = new THREE.Group(); ctail.position.set(0, .1, -.2); cat.add(ctail);
+  [[0, .04, -.1, .09], [0, .14, -.17, .1], [0, .26, -.19, .095], [0, .37, -.16, .08]].forEach(function (b) { ball(ctail, b[3], fur, b[0], b[1], b[2]); });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(.18, .016, 8, 24), mat(0xe63946, { roughness: .5 })); collar.rotation.x = Math.PI / 2; collar.position.set(0, .46, 0); collar.scale.y = .95; cat.add(collar);
+  ball(cat, .024, mat(0xe3b86a, { metalness: .6, roughness: .3 }), 0, .43, .18);
+  const chead = new THREE.Group(); chead.position.set(0, .62, .1); cat.add(chead);
+  ball(chead, .2, fur, 0, 0, 0).scale.set(1.15, .95, 1);
+  [-1, 1].forEach(function (sx) {
+    ball(chead, .1, fur, sx * .17, -.05, .04).scale.set(1, .9, .9);
+    const ear = part(chead, new THREE.ConeGeometry(.07, .13, 10), fur, sx * .12, .2, -.02); ear.rotation.z = -sx * .25;
+    const inr = part(chead, new THREE.ConeGeometry(.04, .08, 8), cpink, sx * .12, .19, .005); inr.rotation.z = -sx * .25;
+    cEars.push({ m: [ear, inr], sx: sx, t0: -9, next: 1.5 + (sx > 0 ? 1.7 : 0) });
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(.018, .004, 6, 10, Math.PI), cdk); arc.position.set(sx * .018, -.06, .205); arc.rotation.z = Math.PI; chead.add(arc);
+  });
+  ball(chead, .075, fur, 0, -.05, .17).scale.set(1.1, .75, .6);
+  ball(chead, .022, cpink, 0, -.02, .215).scale.set(1.2, .8, .7);
+  const ceyes = [-1, 1].map(function (sx) {
+    const eg = new THREE.Group(); eg.position.set(sx * .08, .03, .17); chead.add(eg);
+    ball(eg, .03, mat(0x4aa3df, { roughness: .2 }), 0, 0, 0); ball(eg, .016, cdk, 0, 0, .022); ball(eg, .008, cglint, .01, .012, .03);
+    return eg;
+  });
+  R.cat = cat; R.catParts = { body: cbody, tail: ctail, head: chead, eyes: ceyes, legs: cLegs, ears: cEars };
+  R.catState = { hx: 0, shut: false, munch: false, tw: 1, look: null, mood: null, nextStretch: 6, stretchT0: -9 }; cat.userData.bubbleY = 1.05;
 
   // balloons
   const bcols = [0xf4b6bd, 0xf7cdaa, 0xfbe8de, 0xf0a9b4];
@@ -965,6 +1004,7 @@ function buildChars() {
 }
 const OBST = [{ type: 'c', x: TC.x, z: TC.z, r: 1.1 }, { type: 'c', x: TC.x - 1.7, z: TC.z + .1, r: .5 }, { type: 'c', x: TC.x + 1.2, z: TC.z + 1.4, r: .5 }, { type: 'r', x0: SOFA.x - 1.7, x1: SOFA.x + 1.7, z0: SOFA.z - .8, z1: SOFA.z + .8 }, { type: 'r', x0: PZ.x - .95, x1: PZ.x + .95, z0: PZ.z - .75, z1: PZ.z + .75 }];
 OBST.push({ type: 'c', x: CAMP.x, z: CAMP.z, r: .45 });
+OBST.push({ type: 'c', x: CATP.x, z: CATP.z, r: .32 });
 function pushOut(p) {
   p.x = clamp(p.x, -4.4, 4.6 + EXT); p.z = clamp(p.z, -4.0, 4.6 + EXT);
   OBST.forEach(function (o) {
@@ -1069,6 +1109,8 @@ const SHOTS = {
   shelf:  { p: [-1.1, 2.3, 3.3], l: [-4.7, 1.8, 3.3], fov: 44 },
   window: { p: [-.6, 2.3, 1.8], l: [-5, 2.5, -1.3], fov: 46 },
   selfie: { p: [6.4, 2.2, 6.8], l: [3.2, 1.5, 2.4], fov: 34 },
+  // กล้องอยู่หน้าแมว มองเห็นหน้าแมวตรง ๆ และเห็นน้องที่ยืนข้างแมวทางขวาของจอ (จุดมองอยู่กึ่งกลางระหว่างสองตัว)
+  cat:    { p: [CATP.x + 3.3, 2.3, CATP.z + 3.3], l: [CATP.x + .39, .8, CATP.z - .39], fov: 34 },   // ถอยกล้องออก + ตั้งตรงหน้าแมว ให้น้องกับแมวอยู่ระยะเท่ากัน
   gift:   { p: [GIFT_POS.x + 2.7, 3.4, GIFT_POS.z + 2.4], l: [GIFT_POS.x, .6, GIFT_POS.z], fov: 34 }
 };
 let shot = 'main', camRate = 2.6;
@@ -1077,7 +1119,7 @@ const mouse = { x: 0, y: 0 }; let orbit = 0;
 function shotTarget(name) {
   const s = SHOTS[name], a = VW / VH, tl = tmpL.set(s.l[0], s.l[1], s.l[2]);
   tmpP.set(s.p[0], s.p[1], s.p[2]);
-  const k = name === 'main' ? Math.max(1, 1.05 / Math.pow(a, .85)) : Math.max(1, .9 / a);
+  const k = name === 'main' ? Math.max(1, 1.05 / Math.pow(a, .85)) : name === 'selfie' ? Math.max(1.1, 1.1 / a) : Math.max(1, .9 / a);
   tmpP.sub(tl).multiplyScalar(k).add(tl);
   if (name === 'main' && typeof girl !== 'undefined' && girl) { const fx = (girl.position.x - s.l[0]) * .4, fz = (girl.position.z - s.l[2]) * .4; tl.x += fx; tl.z += fz; tmpP.x += fx; tmpP.z += fz; }
   if (name === 'main') {
@@ -1147,6 +1189,7 @@ const HOTS = [
   { id: 'shelf',  label: 'ดูรูปบนชั้น',      icon: '▣', pos: [-4.7, 3.55, 3.3] },
   { id: 'window', label: 'ชมวิวหน้าต่าง',    icon: '✦', pos: [-4.5, 3.2, -1.2] },
   { id: 'game',   label: 'ต่อจิ๊กซอว์',      icon: '▦', pos: [PZ.x, 1.25, PZ.z] },
+  { id: 'cat',    label: 'เล่นกับแมว',      icon: '♥', pos: [CATP.x, 1.35, CATP.z] },
   { id: 'camera', label: 'ถ่ายรูป',           icon: '◉', pos: [CAMP.x, 2.1, CAMP.z] }
 ];
 const hotOn = {};
@@ -1167,7 +1210,7 @@ function updateOverlay() {
     h.el.hidden = p.z > 1; h.el.style.left = clamp(p.x, hw, VW - hw) + 'px'; h.el.style.top = clamp(p.y, 90, VH - 90) + 'px';
   });
   if (bubbleChar) {
-    const q = bubbleChar.position, p = project(q.x, q.y + (bubbleChar.userData.sitting ? 2.95 : 2.6), q.z), b = $('bubble');
+    const q = bubbleChar.position, p = project(q.x, q.y + (bubbleChar.userData.bubbleY || (bubbleChar.userData.sitting ? 2.95 : 2.6)), q.z), b = $('bubble');
     const bh = Math.min(132, VW * .36) + 6; b.style.left = clamp(p.x, bh, VW - bh) + 'px'; b.style.top = clamp(p.y, 70, VH) + 'px';
   }
 }
@@ -1217,7 +1260,7 @@ function stepFx(dt) {
 /* ===== story ===== */
 const actions = {};
 let busy = true, giftOpened = false, tvTimer = 0;
-const FULL = function () { return giftOpened ? ['sofa', 'shelf', 'window', 'game', 'camera'] : ['gift', 'sofa', 'shelf', 'window', 'game', 'camera']; };
+const FULL = function () { return giftOpened ? ['sofa', 'shelf', 'window', 'game', 'cat', 'camera'] : ['gift', 'sofa', 'shelf', 'window', 'game', 'cat', 'camera']; };
 function lock() { busy = true; showHots([]); say(null, ''); }
 function unlock() { busy = false; showHots(FULL()); }
 function walkP(c, x, z) {
@@ -1539,13 +1582,13 @@ function checkEnd() {
 }
 /* photo poses: offsets (a = screen-right, f = toward camera) from the selfie spot; g = girl, b = boy */
 const POSES = {
-  close: { name: 'ยืนชิดยิ้ม',   g: [-.36, 0], b: [.36, 0],  gp: { hz: -.14, lz: -.08, rz: .08 }, bp: { hz: .14, lz: -.08, rz: .08 } },
-  jump:  { name: 'กระโดดเฮ',     g: [-.55, 0], b: [.55, 0],  gp: { lz: -2.1, rz: 2.1, lx: -.3, rx: -.3, y: .22, l0: .6, l1: -.2 }, bp: { lz: -2.1, rz: 2.1, lx: -.3, rx: -.3, y: .22, l0: -.2, l1: .6 } },
-  wave:  { name: 'โบกมือ',       g: [-.5, 0],  b: [.5, 0],   gp: { lz: -2.0, lx: -.2 }, bp: { rz: 2.0, rx: -.2 } },
-  face:  { name: 'หันมองกัน',    g: [-.45, 0], b: [.45, 0],  face: 'each', gp: { hz: .08 }, bp: { hz: -.08 } },
-  back:  { name: 'หันหลังชนกัน', g: [-.3, 0],  b: [.3, 0],   face: 'away', gp: { lx: -1.2, lz: .7, rx: -1.2, rz: -.7 }, bp: { lx: -1.2, lz: .7, rx: -1.2, rz: -.7 } }
+  close: { name: 'ยืนชิดยิ้ม',   g: [-.66, 0], b: [.66, 0],  gp: { hz: -.1, lz: -.08, rz: .08 }, bp: { hz: .1, lz: -.08, rz: .08 } },
+  jump:  { name: 'กระโดดเฮ', hop: .2,     g: [-.9, 0], b: [.9, 0],  gp: { lz: -2.1, rz: 2.1, lx: -.3, rx: -.3, y: .22, l0: .6, l1: -.2 }, bp: { lz: -2.1, rz: 2.1, lx: -.3, rx: -.3, y: .22, l0: -.2, l1: .6 } },
+  wave:  { name: 'โบกมือ',       g: [-.68, 0], b: [.68, 0],  gp: { lz: -2.0, lx: -.2 }, bp: { rz: 2.0, rx: -.2 } },
+  face:  { name: 'หันมองกัน',    g: [-.65, 0], b: [.65, 0],  face: 'each', gp: { hz: .08 }, bp: { hz: -.08 } },
+  hold:  { name: 'จูงมือ',       g: [-.66, 0], b: [.66, 0],  gp: { hz: -.08, rz: .7, lz: -.08 }, bp: { hz: .08, lz: -.55, rz: .08 } }
 };
-function setPose(key) {
+function setPose(key, withCat) {
   const P = POSES[key];
   [[girl, P.g, P.gp], [boy, P.b, P.bp]].forEach(function (e) {
     const c = e[0], a = e[1][0], f = e[1][1];
@@ -1553,18 +1596,25 @@ function setPose(key) {
     c.userData.target = null; c.userData.route = null; c.userData.pose = e[2];
   });
   if (P.face === 'each') { faceTo(girl, boy.position.x, boy.position.z); faceTo(boy, girl.position.x, girl.position.z); }
-  else if (P.face === 'away') { faceTo(girl, girl.position.x - 4.1, girl.position.z + 2.85); faceTo(boy, boy.position.x + 4.1, boy.position.z - 2.85); }
   else { faceTo(girl, SHOTS.selfie.p[0], SHOTS.selfie.p[2]); faceTo(boy, SHOTS.selfie.p[0], SHOTS.selfie.p[2]); }
   happy(girl, true); happy(boy, true);
+  if (withCat) {
+    R.cat.position.set(3.2 + .6 * .57, P.hop || 0, 2.15 + .6 * .82); faceTo(R.cat, SHOTS.selfie.p[0], SHOTS.selfie.p[2]);
+    Object.assign(R.catState, { look: { x: SHOTS.selfie.p[0], z: SHOTS.selfie.p[2] }, hx: 0, shut: false, munch: false, tw: 1 });
+  }
 }
-function clearPose() { [girl, boy].forEach(function (c) { c.userData.pose = null; c.position.y = 0; happy(c, false); }); }
+function catHome() { R.cat.position.set(CATP.x, 0, CATP.z); R.cat.rotation.y = CATYAW; Object.assign(R.catState, { look: null, hx: 0, shut: false, munch: false, tw: 1, mood: null }); }
+function clearPose() { [girl, boy].forEach(function (c) { c.userData.pose = null; c.position.y = 0; happy(c, false); }); catHome(); }
 async function finale() {
   lock(); narr('');
+  let withCat = true;
   const btns = Object.keys(POSES).map(function (k) { return '<button class="btn dark" type="button" data-act="' + k + '">' + POSES[k].name + '</button>'; }).join('');
   for (;;) {
-    const pick = await card('<p class="eyebrow">ถ่ายรูปด้วยกัน</p><h2>เลือกท่าโพส</h2><p>เลือกท่าที่ชอบ แล้วเตรียมยิ้มได้เลย</p><div class="row" style="justify-content:center">' + btns + '</div><div class="row"><span></span><button class="btn ghost" type="button" data-act="x">ไว้ก่อน</button></div>');
+    const pick = await card('<p class="eyebrow">ถ่ายรูปด้วยกัน</p><h2>เลือกท่าโพส</h2><p>เลือกท่าที่ชอบ แล้วเตรียมยิ้มได้เลย</p><div class="row" style="justify-content:center">' + btns + '</div><div class="row" style="justify-content:center"><button class="btn' + (withCat ? '' : ' ghost') + '" type="button" data-act="cat">' + (withCat ? '✓ มีแมวในรูป' : 'ชวนแมวมาถ่ายด้วย') + '</button></div><div class="row"><span></span><button class="btn ghost" type="button" data-act="x">ไว้ก่อน</button></div>');
+    if (pick.act === 'cat') { withCat = !withCat; continue; }
     if (pick.act === 'x') { clearPose(); shot = 'main'; narr('สุขสันต์วันเกิด ' + CONFIG.name, 'เดินเล่นในห้องต่อได้เลย'); unlock(); return; }
-    setPose(pick.act); shot = 'selfie';
+    if (!withCat) catHome();
+    setPose(pick.act, withCat); shot = 'selfie';
     for (const n of ['3', '2', '1']) { narr(n, 'ยิ้มหน่อย'); await sleep(750); }
     narr('');
     renderer.render(scene, camera); const url = canvas.toDataURL('image/jpeg', .88);
@@ -1576,6 +1626,62 @@ async function finale() {
     if (out.act === 'stay') { shot = 'main'; narr('สุขสันต์วันเกิด ' + CONFIG.name, 'เดินเล่นในห้องต่อได้เลย'); unlock(); return; }
   }
 }
+
+/* ===== play with the cat ===== */
+function hearts(x, y, z, n) {
+  for (let i = 0; i < (n || 3); i++) setTimeout(function () {
+    const p = project(x + (Math.random() - .5) * .3, y, z + (Math.random() - .5) * .3), h = document.createElement('div');
+    h.className = 'fheart'; h.textContent = '♥'; h.style.left = p.x + 'px'; h.style.top = p.y + 'px'; h.style.color = ['#e4566e', '#f28aa0', '#ff9db0'][i % 3];
+    $('bubble').parentNode.appendChild(h); setTimeout(function () { h.remove(); }, 1500);
+  }, i * 220);
+}
+actions.cat = async function () {
+  lock(); narr('');
+  const cs = R.catState, cat = R.cat, gu = girl.userData, parent = cat.parent;
+  const fx = Math.sin(CATYAW), fz = Math.cos(CATYAW), px = fz, pz = -fx;          // cat front direction and its sideways direction
+  const GD = 1.1, GD_PET = .72;                                          // ระยะที่น้องยืนห่างแมว / ระยะตอนก้าวเข้าไปลูบหัว
+  const GX = CATP.x + px * GD, GZ = CATP.z + pz * GD;                    // น้องยืนข้างแมว (ไม่บังกล้อง) หันเข้าหาแมว
+  await walkP(girl, GX, GZ);
+  faceTo(girl, CATP.x, CATP.z); shot = 'cat'; await sleep(700);
+  const calm = function () { gu.pose = null; Object.assign(cs, { shut: false, munch: false, hx: 0, tw: 1, look: null, mood: null }); cat.position.y = 0; };
+  for (;;) {
+    const act = await new Promise(function (res) {
+      bar('<div class="pill" style="flex-wrap:wrap;justify-content:center;border-radius:22px;padding:8px;gap:8px"><button class="btn" type="button" data-act="pet">ลูบหัว</button><button class="btn" type="button" data-act="treat">ให้ขนม</button><button class="btn" type="button" data-act="ball">เล่นลูกบอล</button><button class="skip" type="button" data-act="x">พอแล้ว</button></div>');
+      $('bar').querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function () { bar(''); res(b.dataset.act); }; });
+    });
+    if (act === 'x') break;
+    sfx.click();
+    if (act === 'pet') {
+      await walkP(girl, CATP.x + px * GD_PET, CATP.z + pz * GD_PET); faceTo(girl, CATP.x, CATP.z);   // ก้าวเข้าไปลูบหัว
+      cs.mood = 'pet'; cs.shut = true; cs.hx = -.18; cs.tw = 1.6; say(cat, 'เมี๊ยว~ ♡', 2400);
+      for (let i = 0; i < 12; i++) { gu.pose = { rx: -1.15 + Math.sin(i * 1.4) * .18, rz: .15, hz: .05 }; if (i % 3 === 0) hearts(CATP.x, 1.0, CATP.z, 1); await sleep(190); }
+      calm();
+      await walkP(girl, GX, GZ); faceTo(girl, CATP.x, CATP.z);                                         // ถอยกลับที่เดิม
+    } else if (act === 'treat') {
+      const fish = new THREE.Group(), fm = mat(0x8fb8e8, { roughness: .5 });
+      ball(fish, .08, fm, 0, 0, 0).scale.set(1.6, .8, .7); part(fish, new THREE.ConeGeometry(.06, .1, 8), fm, -.14, 0, 0).rotation.z = Math.PI / 2;
+      fish.position.set(GX, .85, GZ); parent.add(fish);
+      gu.pose = { rx: -1.4 }; cs.look = fish.position; cs.hx = .15;
+      const sx = fish.position.x, sz = fish.position.z, ex = CATP.x + fx * .42, ez = CATP.z + fz * .42;
+      await tween(700, function (k) { fish.position.set(sx + (ex - sx) * k, .85 + (.05 - .85) * k + Math.sin(k * Math.PI) * .25, sz + (ez - sz) * k); fish.rotation.y = k * 6; });
+      gu.pose = null; cs.mood = 'eat'; cs.tw = 2.6; cs.hx = .55; cs.munch = true; say(cat, 'อร่อยจัง!', 2200); hearts(CATP.x, 1.0, CATP.z, 3);
+      await tween(1500, function (k) { fish.scale.setScalar(1 - k * .95); });
+      parent.remove(fish); calm();
+    } else {
+      const yarn = new THREE.Group(); ball(yarn, .09, mat(0xe63946, { roughness: .8 }), 0, 0, 0);
+      const stripe = new THREE.Mesh(new THREE.TorusGeometry(.09, .008, 6, 16), mat(0xffffff, { roughness: .8 })); stripe.rotation.x = 1; yarn.add(stripe);
+      parent.add(yarn); gu.pose = { rx: -1.0 }; cs.mood = 'play'; cs.look = yarn.position; cs.tw = 3; say(cat, 'เมี๊ยว!', 1800);
+      await tween(3200, function (k) {
+        const ph = -2.6 + 1.7 * (.5 - .5 * Math.cos(k * Math.PI * 4)), rr = .62;
+        yarn.position.set(CATP.x + (Math.cos(ph) * fx + Math.sin(ph) * px) * rr, .09 + Math.abs(Math.sin(k * Math.PI * 10)) * .1, CATP.z + (Math.cos(ph) * fz + Math.sin(ph) * pz) * rr); yarn.rotation.z = k * 40;
+        if (k > .86) cat.position.y = Math.sin((k - .86) / .14 * Math.PI) * .18;
+      });
+      hearts(CATP.x, 1.0, CATP.z, 2); parent.remove(yarn); calm();
+    }
+    await sleep(250);
+  }
+  calm(); say(null, ''); shot = 'main'; narr('สุขสันต์วันเกิด ' + CONFIG.name, 'เดินเล่นในห้องต่อได้เลย'); unlock();
+};
 actions.camera = function () { if (!busy) finale(); };
 
 /* walk by tapping the floor */
@@ -1626,6 +1732,69 @@ function frame(now) {
   stepFireworks(dt, now);
   if (tvBusy() || (tvOn && now - lastTvDraw > 33)) { drawTV(); lastTvDraw = now; }
   if (R.pzRing) { R.pzRing.visible = !!hotOn.game && !done.game; if (R.pzRing.visible) { R.pzRing.material.opacity = .45 + Math.sin(t * 3 + 1) * .2; R.pzRing.scale.setScalar(1 + Math.sin(t * 3 + 1) * .05); } }
+  if (R.cat) {
+    const cat = R.cat, cp = R.catParts, cs = R.catState, cx = cat.position, mood = cs.mood;
+    const atHome = Math.hypot(cx.x - CATP.x, cx.z - CATP.z) < .05;                  // ตอนถ่ายเซลฟี่แมวถูกย้ายไปที่อื่น ไม่ต้องคุมทิศ
+    const dg = (typeof girl !== 'undefined' && girl) ? Math.hypot(girl.position.x - cx.x, girl.position.z - cx.z) : 9, near = !mood && dg < 1.9;
+    const tgt = cs.look || (typeof girl !== 'undefined' && girl ? girl.position : null);
+    const sm = function (cur, to, k) { return cur + (to - cur) * k; };
+
+    // เคสยืดตัว: ทุก ๆ 12-20 วิ ตอนอยู่เฉย ๆ
+    if (!mood && !near && t > cs.nextStretch) { cs.stretchT0 = t; cs.nextStretch = t + 12 + Math.random() * 8; }
+    const sk = t - cs.stretchT0 < 2 ? Math.sin((t - cs.stretchT0) / 2 * Math.PI) : 0;
+
+    // หายใจ + ขนสั่นตอนครางหงิง ๆ
+    const purr = mood === 'pet' ? Math.sin(t * 26) * .008 : 0;
+    cp.body.scale.set(1 + Math.sin(t * 1.8 + 1) * .01 + sk * .05 + purr, 1.1 + Math.sin(t * 1.8) * .02 - sk * .04, .95 + sk * .08 + purr);
+    cp.body.rotation.z = cs.shut ? Math.sin(t * 38) * .012 : Math.sin(t * .6) * .01;
+
+    // เอนตัวตามอารมณ์
+    const leanTo = mood === 'eat' ? .1 : mood === 'play' ? .08 : mood === 'pet' ? -.03 : near ? -.02 : sk * .1;
+    cat.rotation.x = sm(cat.rotation.x, leanTo, .1);
+
+    // หางสะบัด
+    const tw = Math.max(cs.tw, near ? 1.9 : 1);
+    cp.tail.rotation.z = Math.sin(t * 1.5 * tw) * (.3 + (tw - 1) * .1);
+    cp.tail.rotation.y = Math.sin(t * 1.1 * tw + 1) * .22;
+    cp.tail.rotation.x = Math.sin(t * .9) * .08 - (mood || near ? .22 : 0);
+
+    // ตัวหมุนตามลูกบอลตอนเล่น + ส่ายก้นตอนเตรียมตะปบ
+    if (atHome) {
+      let yaw = CATYAW;
+      if (mood === 'play' && cs.look && cs.look.x != null) {
+        const ang = Math.atan2(cs.look.x - cx.x, cs.look.z - cx.z) - CATYAW;
+        yaw += Math.max(-.55, Math.min(.55, Math.atan2(Math.sin(ang), Math.cos(ang)) * .6)) + Math.sin(t * 17) * .035;
+      } else if (near) yaw += Math.max(-.3, Math.min(.3, Math.atan2(Math.sin(Math.atan2(girl.position.x - cx.x, girl.position.z - cx.z) - CATYAW), Math.cos(Math.atan2(girl.position.x - cx.x, girl.position.z - cx.z) - CATYAW)) * .35));
+      let dy = yaw - cat.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); cat.rotation.y += dy * .08;
+    }
+
+    // หัวมองตาม + เอียงหัว
+    let da = 0;
+    if (tgt) { const ang = Math.atan2(tgt.x - cx.x, tgt.z - cx.z) - cat.rotation.y; da = Math.max(-.9, Math.min(.9, Math.atan2(Math.sin(ang), Math.cos(ang)))); }
+    da += Math.sin(t * .55) * .07;
+    cp.head.rotation.y += (da - cp.head.rotation.y) * .08;
+    cp.head.rotation.z = sm(cp.head.rotation.z, mood === 'pet' ? Math.sin(t * 2.6) * .1 : Math.sin(t * .7) * .05 + (near ? .12 : 0), .12);
+    cp.head.rotation.x += (cs.hx - sk * .3 + (cs.munch ? Math.sin(t * 14) * .07 : 0) - cp.head.rotation.x) * .12;
+    cp.head.position.y = .62 + Math.sin(t * 1.8 + .6) * .006 + (mood === 'pet' ? .025 + Math.sin(t * 2.6) * .01 : 0) - (mood === 'eat' ? .04 : 0);
+    cp.head.position.z = .1 + (mood === 'eat' ? .05 : 0) + (mood === 'pet' ? Math.sin(t * 2.6) * .01 : 0);
+
+    // หูกระดิก / หูพับตอนถูกลูบ
+    cp.ears.forEach(function (e) {
+      if (t > e.next) { e.t0 = t; e.next = t + 2.5 + Math.random() * 4.5; }
+      const k = t - e.t0, fl = k < .3 ? Math.sin(k / .3 * Math.PI) * .32 : 0, base = -e.sx * (.25 + (cs.shut ? .32 : 0)) + e.sx * fl;
+      e.m.forEach(function (m) { m.rotation.z += (base - m.rotation.z) * .3; });
+    });
+
+    // ขาหน้า: ยืดตัว / ตะปบลูกบอล / ย่ำ ๆ ตอนถูกลูบ
+    cp.legs.forEach(function (lg, i) {
+      let rx = -sk * .55;
+      if (mood === 'play') rx = -(.45 + .45 * Math.sin(t * 9 + i * 2.2)) * .9;
+      else if (mood === 'pet') rx = -Math.max(0, Math.sin(t * 5 + i * 3.1)) * .22;
+      lg.rotation.x += (rx - lg.rotation.x) * .25;
+    });
+
+    const bl = cs.shut || (t % 4.3) < .13 ? .1 : 1; cp.eyes.forEach(function (e) { e.scale.y = sm(e.scale.y, bl, .5); });
+  }
   if (R.camRing) { R.camRing.visible = !!hotOn.camera; R.camRing.material.opacity = .4 + Math.sin(t * 3 + 2) * .2; R.camRing.scale.setScalar(1 + Math.sin(t * 3 + 2) * .06); }
   if (R.giftRing.visible) { R.giftRing.material.opacity = .45 + Math.sin(t * 3) * .2; R.giftRing.scale.setScalar(1 + Math.sin(t * 3) * .08); }
   R.mark.material.opacity = Math.max(0, R.mark.material.opacity - dt * 1.2);
